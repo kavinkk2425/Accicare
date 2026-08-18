@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load static %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartAI — Accident Detection</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://js.pusher.com/7.0/pusher.min.js"></script>
+    <style>
+        :root {
+            --primary: #00f5ff;
+            --danger: #ff3c5f;
+            --success: #00e676;
+            --warning: #ffab00;
+            --bg-dark: #0a0e1a;
+            --bg-card: #111827;
+            --bg-card2: #1a2235;
+            --border: rgba(0,245,255,0.15);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-dark);
+            color: #e0e6f0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated background grid */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0,245,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,245,255,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ── NAVBAR ── */
+        .navbar-smart {
+            background: rgba(10,14,26,0.95);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 32px;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .brand {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 900;
+            background: linear-gradient(90deg, #00f5ff, #7b2ff7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 2px;
+        }
+
+        .brand span { color: var(--danger); -webkit-text-fill-color: var(--danger); }
+
+        .nav-links a {
+            color: #8899bb;
+            text-decoration: none;
+            margin-left: 24px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: color 0.2s;
+        }
+        .nav-links a:hover { color: var(--primary); }
+
+        .status-dot {
+            display: inline-block;
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 8px var(--success);
+            animation: pulse-dot 1.5s infinite;
+            margin-right: 6px;
+        }
+        @keyframes pulse-dot {
+            0%,100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.4); }
+        }
+
+        /* ── MAIN LAYOUT ── */
+        .main-wrapper {
+            position: relative;
+            z-index: 1;
+            padding: 28px 32px;
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* ── FEED PANEL ── */
+        .feed-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 0 40px rgba(0,245,255,0.06);
+        }
+
+        .feed-header {
+            background: linear-gradient(135deg, #0d1b2e, #111827);
+            padding: 16px 22px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .feed-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+            color: var(--primary);
+            text-transform: uppercase;
+        }
+
+        .feed-badge {
+            background: rgba(0,245,255,0.1);
+            border: 1px solid rgba(0,245,255,0.3);
+            color: var(--primary);
+            font-size: 0.7rem;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+
+        .feed-img {
+            width: 100%;
+            height: 580px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .feed-footer {
+            padding: 12px 22px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: rgba(0,0,0,0.3);
+            font-size: 0.78rem;
+            color: #556;
+        }
+
+        .feed-footer i { color: var(--primary); }
+
+        /* ── SIDE PANEL ── */
+        .side-panel { display: flex; flex-direction: column; gap: 20px; }
+
+        /* ── STATUS CARD ── */
+        .status-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 22px;
+            box-shadow: 0 0 30px rgba(0,245,255,0.04);
+        }
+
+        .card-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #556;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card-label i { font-size: 0.75rem; }
+
+        /* Response card */
+        .response-card { border-color: rgba(0,230,118,0.2); }
+        .response-card .card-label i { color: var(--success); }
+
+        #response {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--success);
+            text-shadow: 0 0 20px rgba(0,230,118,0.5);
+            min-height: 36px;
+            word-break: break-word;
+        }
+
+        /* Accident card */
+        .accident-card { border-color: rgba(255,60,95,0.2); }
+        .accident-card .card-label i { color: var(--danger); }
+
+        #request {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--danger);
+            text-shadow: 0 0 20px rgba(255,60,95,0.5);
+            min-height: 36px;
+        }
+
+        #request.safe { color: var(--success); text-shadow: 0 0 20px rgba(0,230,118,0.4); }
+
+        /* ── STATS ROW ── */
+        .stats-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        .stat-box {
+            background: var(--bg-card2);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #00f5ff, #7b2ff7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            font-size: 0.68rem;
+            color: #556;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        /* ── AI INDICATOR ── */
+        .ai-indicator {
+            background: linear-gradient(135deg, #0d1b2e, #1a0a2e);
+            border: 1px solid rgba(123,47,247,0.3);
+            border-radius: 18px;
+            padding: 20px 22px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .ai-icon {
+            width: 52px; height: 52px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #7b2ff7, #00f5ff);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            flex-shrink: 0;
+            box-shadow: 0 0 20px rgba(123,47,247,0.4);
+        }
+
+        .ai-text h6 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            color: #c0aaff;
+            margin-bottom: 4px;
+        }
+
+        .ai-text p {
+            font-size: 0.75rem;
+            color: #556;
+            line-height: 1.4;
+        }
+
+        /* ── ALERT FLASH ── */
+        @keyframes alert-flash {
+            0%,100% { box-shadow: 0 0 30px rgba(255,60,95,0.1); border-color: rgba(255,60,95,0.2); }
+            50% { box-shadow: 0 0 50px rgba(255,60,95,0.5); border-color: rgba(255,60,95,0.7); }
+        }
+        .accident-card.flashing { animation: alert-flash 0.8s infinite; }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 900px) {
+            .main-wrapper { grid-template-columns: 1fr; padding: 16px; }
+            .feed-img { height: 300px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar-smart">
+    <div class="brand">Smart<span>AI</span></div>
+    <div class="nav-links">
+        <span class="status-dot"></span>
+        <span style="font-size:0.78rem;color:#556;font-weight:600;">LIVE MONITORING</span>
+        <a href="{% url 'register' %}"><i class="fa fa-hospital me-1"></i>Register Hospital</a>
+        <a href="{% url 'test' %}"><i class="fa fa-bell me-1"></i>Dashboard</a>
+    </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main-wrapper">
+
+    <!-- FEED -->
+    <div class="feed-panel">
+        <div class="feed-header">
+            <span class="feed-title"><i class="fa fa-video me-2"></i>Live Camera Feed</span>
+            <span class="feed-badge">● REC</span>
+        </div>
+        <img src="{% url 'webcam_feed' %}" class="feed-img" alt="Live Feed">
+        <div class="feed-footer">
+            <span><i class="fa fa-map-marker-alt me-1"></i>Highway Cam — Node 01</span>
+            <span><i class="fa fa-microchip me-1"></i>YOLOv5 Active</span>
+            <span style="margin-left:auto;"><i class="fa fa-clock me-1"></i><span id="clock"></span></span>
+        </div>
+    </div>
+
+    <!-- SIDE -->
+    <div class="side-panel">
+
+        <!-- AI Indicator -->
+        <div class="ai-indicator">
+            <div class="ai-icon">🤖</div>
+            <div class="ai-text">
+                <h6>AI Engine Online</h6>
+                <p>YOLOv5 model scanning frames in real-time for vehicle collision events.</p>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-row">
+            <div class="stat-box">
+                <div class="stat-value">24/7</div>
+                <div class="stat-label">Monitoring</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">&lt;2s</div>
+                <div class="stat-label">Response Time</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">AI</div>
+                <div class="stat-label">Detection</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">🚑</div>
+                <div class="stat-label">Auto Alert</div>
+            </div>
+        </div>
+
+        <!-- Response Status -->
+        <div class="status-card response-card">
+            <div class="card-label"><i class="fa fa-check-circle"></i>Hospital Response</div>
+            <div id="response">Awaiting...</div>
+        </div>
+
+        <!-- Accident Status -->
+        <div class="status-card accident-card" id="accidentCard">
+            <div class="card-label"><i class="fa fa-exclamation-triangle"></i>Accident Status</div>
+            <div id="request" class="safe">✔ No Accident Detected</div>
+        </div>
+
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Clock
+    function updateClock() {
+        document.getElementById('clock').textContent = new Date().toLocaleTimeString();
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Pusher
+    Pusher.logToConsole = false;
+    var pusher = new Pusher('4da6311b184ace45d1dc', { cluster: 'ap2' });
+    var channel = pusher.subscribe('my-channel');
+    channel.bind('my-event', function(data) {
+        // Hospital accepted the request → views.py send_response() sends {message: 'Request Accepted'}
+        if (data['message']) {
+            var res = document.getElementById('response');
+            res.textContent = '✔ ' + data['message'];
+        }
+        // Accident detected → stream.py send_notification(2) sends {request: '...'}
+        if (data['request']) {
+            var el = document.getElementById('request');
+            var card = document.getElementById('accidentCard');
+            el.textContent = data['request'];
+            el.classList.remove('safe');
+            card.classList.add('flashing');
+        }
+        // Urgent alert → stream.py send_notification(1) sends {urgent: '...'}
+        if (data['urgent']) {
+            var res = document.getElementById('response');
+            res.textContent = '⚠ ' + data['urgent'];
+            res.style.color = '#ffab00';
+            res.style.textShadow = '0 0 20px rgba(255,171,0,0.5)';
+        }
+    });
+</script>
+</body>
+</html>
